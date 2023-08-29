@@ -12,11 +12,11 @@ from itertools import permutations,combinations
 sin = np.sin;cos = np.cos;exp = np.exp; pi = np.pi
 
 def write(filename,path,data):
-    np.save("%s/%s.npy"%(path,filename), data)
+    np.save("%s/%s.npy"%(path,filename), data,allow_pickle=True)
     return
 
 def read(filename,path):
-    data = np.load("%s/%s.npy"%(path,filename))
+    data = np.load("%s/%s.npy"%(path,filename),allow_pickle=True)
     return data
 @jit
 def phi(eta,alpha,beta,gamma):
@@ -105,30 +105,172 @@ def Hoft_sample_hist():
 
 #Hoft_sample_hist()
 
-@njit(parallel=True)
+# @njit(parallel=True)
+# @jit()
 def derivatives(phi_arr_i, diff_arr, run_idx):
     arr = phi_arr_i
-    for x_idx in prange(N-1):
-        for y_idx in prange(N-1):
-            for z_idx in prange(N-1):
-                ##Derivatives using central differences
+    # for x_idx in prange(N-1):
+    #     for y_idx in prange(N-1):
+    #         for z_idx in prange(N-1):
+    #             ##Derivatives using central differences
+    #
+    #             dphi_0_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 0] - arr[x_idx-1, y_idx, z_idx, 0])
+    #             dphi_1_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 0] - arr[x_idx-1, y_idx, z_idx, 1])
+    #
+    #             dphi_0_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 0] - arr[x_idx, y_idx-1, z_idx, 0])
+    #             dphi_1_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 0] - arr[x_idx, y_idx-1, z_idx, 1])
+    #
+    #             dphi_0_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 0] - arr[x_idx, y_idx, z_idx - 1, 0])
+    #             dphi_1_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 0] - arr[x_idx, y_idx, z_idx - 1, 1])
+    #
+    #             diff_arr[x_idx, y_idx, z_idx, 0] = [dphi_0_x, dphi_0_y, dphi_0_z]
+    #             diff_arr[x_idx, y_idx, z_idx, 1] = [dphi_1_x, dphi_1_y, dphi_1_z]
+    #
+    # #Setting last element derivative to that of the first one
+    # diff_arr[-1,:,:,:,:] = diff_arr[0,:,:,:,:]
+    # diff_arr[:, -1, :, :, :] = diff_arr[:, 0, :, :, :]
+    # diff_arr[:, :, -1, :, :] = diff_arr[:, :, 0, :, :]
 
-                dphi_0_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 0] - arr[x_idx-1, y_idx, z_idx, 0])
-                dphi_1_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 0] - arr[x_idx-1, y_idx, z_idx, 1])
+    # Right: x_idx = N-1 yz-surface
+    # Top: z_idx = N-1 xy-surface
+    # Back: y_idx = N-1 xz-surface
+    ##supercell is the 3^3 lattice that is divided into tetrahera
+    ##Loops over all the vertices of the supercell
+    ##Does not to go the right top and back surfaces
+    for x_idx in range(0,N-1,2):
+        for y_idx in range(0,N-1,2):
+            for z_idx in range(0,N-1,2):
+                # print(x_idx,y_idx,z_idx)
+                bdx = 0
+                bdy = 0
+                bdz = 0
+                if x_idx == 0: bdx = 1
+                if y_idx == 0: bdy = 1
+                if z_idx == 0: bdz = 1
 
-                dphi_0_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 0] - arr[x_idx, y_idx-1, z_idx, 0])
-                dphi_1_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 0] - arr[x_idx, y_idx-1, z_idx, 1])
+                dphi_0_x = (1 / 2 * (2*a)) * (arr[x_idx+2, y_idx, z_idx, 0] - arr[x_idx-(2+bdx), y_idx, z_idx, 0])
+                dphi_1_x = (1 / 2 * (2*a)) * (arr[x_idx+2, y_idx, z_idx, 1] - arr[x_idx-(2+bdx), y_idx, z_idx, 1])
 
-                dphi_0_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 0] - arr[x_idx, y_idx, z_idx - 1, 0])
-                dphi_1_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 0] - arr[x_idx, y_idx, z_idx - 1, 1])
+                dphi_0_y = (1 / 2 * (2*a)) * (arr[x_idx, y_idx+2, z_idx, 0] - arr[x_idx, y_idx-(2+bdy), z_idx, 0])
+                dphi_1_y = (1 / 2 * (2*a)) * (arr[x_idx, y_idx+2, z_idx, 1] - arr[x_idx, y_idx-(2+bdy), z_idx, 1])
+
+                dphi_0_z = (1/2*(2*a))*(arr[x_idx, y_idx, z_idx + 2, 0] - arr[x_idx, y_idx, z_idx - (2+bdz), 0])
+                dphi_1_z = (1/2*(2*a))*(arr[x_idx, y_idx, z_idx + 2, 1] - arr[x_idx, y_idx, z_idx - (2+bdz), 1])
 
                 diff_arr[x_idx, y_idx, z_idx, 0] = [dphi_0_x, dphi_0_y, dphi_0_z]
                 diff_arr[x_idx, y_idx, z_idx, 1] = [dphi_1_x, dphi_1_y, dphi_1_z]
+                
+    ##Scans over the supercell face centered points starting from the bottom surface but omitting the top
+    ##Does not loop over the face points on the Left or Front surfaces or the supercell centers
+    for x_idx in range(1,N-1,2):
+        for y_idx in range(1,N-1,2):
+            for z_idx in range(0,N-1,2):
+                # print(x_idx,y_idx,z_idx)
+                bdx = 0;bdfx = 0
+                bdy = 0;bdfy = 0
+                bdz = 0;bdfz = 0
+                if x_idx == 1: bdx = 1
+                if y_idx == 1: bdy = 1
+                if z_idx == 0: bdz = 1
+                if x_idx == N-2: bdfx = -(1+x_idx)
+                if y_idx == N-2: bdfy = -(1+y_idx)
 
+                dphi_0_x = (1 / 2 * (2*a)) * (arr[x_idx+2+bdfx, y_idx, z_idx, 0] - arr[x_idx-(2+bdx), y_idx, z_idx, 0])
+                dphi_1_x = (1 / 2 * a) * (arr[x_idx+2+bdfx, y_idx, z_idx, 1] - arr[x_idx-(2+bdx), y_idx, z_idx, 1])
+
+                dphi_0_y = (1 / 2 * (2*a)) * (arr[x_idx, y_idx+2+bdfy, z_idx, 0] - arr[x_idx, y_idx-(2+bdy), z_idx, 0])
+                dphi_1_y = (1 / 2 * (2*a)) * (arr[x_idx, y_idx+2+bdfy, z_idx, 1] - arr[x_idx, y_idx-(2+bdy), z_idx, 1])
+
+                dphi_0_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 0] - arr[x_idx, y_idx, z_idx - (1+bdz), 0])
+                dphi_1_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 1] - arr[x_idx, y_idx, z_idx - (1+bdz), 1])
+
+                diff_arr[x_idx, y_idx, z_idx, 0] = [dphi_0_x, dphi_0_y, dphi_0_z]
+                diff_arr[x_idx, y_idx, z_idx, 1] = [dphi_1_x, dphi_1_y, dphi_1_z]
+    #Loop for the face centered points on the left surface
+    for x_idx in [0]:
+        for y_idx in range(1,N-1,2):
+            for z_idx in range(1,N-1,2):
+                # print(x_idx,y_idx,z_idx)
+                bdx = 0;bdfx = 0
+                bdy = 0;bdfy = 0
+                bdz = 0;bdfz = 0
+                if x_idx == 0: bdx = 1
+                if y_idx == 1: bdy = 1
+                if z_idx == 1: bdz = 1
+                if y_idx == N-2: bdfy = -(1+y_idx)
+                if z_idx == N-2: bdfz = -(1+z_idx)
+
+                dphi_0_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 0] - arr[x_idx-(1+bdx), y_idx, z_idx, 0])
+                dphi_1_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 1] - arr[x_idx-(1+bdx), y_idx, z_idx, 1])
+
+                dphi_0_y = (1 / 2 * (2*a)) * (arr[x_idx, y_idx+2+bdfy, z_idx, 0] - arr[x_idx, y_idx-(2+bdy), z_idx, 0])
+                dphi_1_y = (1 / 2 * (2*a)) * (arr[x_idx, y_idx+2+bdfy, z_idx, 1] - arr[x_idx, y_idx-(2+bdy), z_idx, 1])
+
+                dphi_0_z = (1/2*(2*a))*(arr[x_idx, y_idx, z_idx + 2+bdfz, 0] - arr[x_idx, y_idx, z_idx - (2+bdz), 0])
+                dphi_1_z = (1/2*(2*a))*(arr[x_idx, y_idx, z_idx + 2+bdfz, 1] - arr[x_idx, y_idx, z_idx - (2+bdz), 1])
+
+                diff_arr[x_idx, y_idx, z_idx, 0] = [dphi_0_x, dphi_0_y, dphi_0_z]
+                diff_arr[x_idx, y_idx, z_idx, 1] = [dphi_1_x, dphi_1_y, dphi_1_z]
+    # Loop for the face centered points on the Front surface
+    for x_idx in range(1,N-1,2):
+        for y_idx in [0]:
+            for z_idx in range(1,N-1,2):
+                # print(x_idx,y_idx,z_idx)
+                bdx = 0;bdfx = 0
+                bdy = 0;bdfy = 0
+                bdz = 0;bdfz = 0
+                if x_idx == 0: bdx = 1
+                if y_idx == 1: bdy = 1
+                if z_idx == 1: bdz = 1
+                if x_idx == N-2: bdfx = -(1+x_idx)
+                if z_idx == N-2: bdfz = -(1+z_idx)
+                dphi_0_x = (1 / 2 * (2*a)) * (arr[x_idx+2+bdfx, y_idx, z_idx, 0] - arr[x_idx-(2+bdx), y_idx, z_idx, 0])
+                dphi_1_x = (1 / 2 * (2*a)) * (arr[x_idx+2+bdfx, y_idx, z_idx, 1] - arr[x_idx-(2+bdx), y_idx, z_idx, 1])
+
+                dphi_0_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 0] - arr[x_idx, y_idx-(1+bdy), z_idx, 0])
+                dphi_1_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 1] - arr[x_idx, y_idx-(1+bdy), z_idx, 1])
+
+                dphi_0_z = (1/2*(2*a))*(arr[x_idx, y_idx, z_idx + 2+bdfz, 0] - arr[x_idx, y_idx, z_idx - (2+bdz), 0])
+                dphi_1_z = (1/2*(2*a))*(arr[x_idx, y_idx, z_idx + 2+bdfz, 1] - arr[x_idx, y_idx, z_idx - (2+bdz), 1])
+
+                diff_arr[x_idx, y_idx, z_idx, 0] = [dphi_0_x, dphi_0_y, dphi_0_z]
+                diff_arr[x_idx, y_idx, z_idx, 1] = [dphi_1_x, dphi_1_y, dphi_1_z]
+    #Loops over the supercell centers
+    for x_idx in range(1,N-1,2):
+        for y_idx in range(1,N-1,2):
+            for z_idx in range(1,N-1,2):
+                # print(x_idx,y_idx,z_idx)
+                dphi_0_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 0] - arr[x_idx-1, y_idx, z_idx, 0])
+                dphi_1_x = (1 / 2 * a) * (arr[x_idx+1, y_idx, z_idx, 1] - arr[x_idx-1, y_idx, z_idx, 1])
+
+                dphi_0_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 0] - arr[x_idx, y_idx-1, z_idx, 0])
+                dphi_1_y = (1 / 2 * a) * (arr[x_idx, y_idx+1, z_idx, 1] - arr[x_idx, y_idx-1, z_idx, 1])
+
+                dphi_0_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 0] - arr[x_idx, y_idx, z_idx - 1, 0])
+                dphi_1_z = (1/2*a)*(arr[x_idx, y_idx, z_idx + 1, 1] - arr[x_idx, y_idx, z_idx - 1, 1])
+
+                diff_arr[x_idx, y_idx, z_idx, 0] = [dphi_0_x, dphi_0_y, dphi_0_z]
+                diff_arr[x_idx, y_idx, z_idx, 1] = [dphi_1_x, dphi_1_y, dphi_1_z]
     #Setting last element derivative to that of the first one
-    diff_arr[-1,:,:,:,:] = diff_arr[0,:,:,:,:]
-    diff_arr[:, -1, :, :, :] = diff_arr[:, 0, :, :, :]
-    diff_arr[:, :, -1, :, :] = diff_arr[:, :, 0, :, :]
+    
+    for x_idx in range(N):
+        for y_idx in range(N):
+            for z_idx in range(N):
+                if x_idx == N-1:
+                    diff_arr[x_idx,y_idx,z_idx,:,:] = diff_arr[0,y_idx,z_idx,:,:]
+                if y_idx == N-1:
+                    diff_arr[x_idx,y_idx,z_idx,:,:] = diff_arr[x_idx,0,z_idx,:,:]
+                if z_idx == N-1:
+                    diff_arr[x_idx,y_idx,z_idx,:,:] = diff_arr[x_idx,y_idx,0,:,:]
+
+    #Could be elegant with nested for loops but meh
+    diff_arr[N-1,0,0]=diff_arr[0,0,0]
+    diff_arr[N-1,N-1,0]=diff_arr[0,0,0]
+    diff_arr[N-1,0,N-1]=diff_arr[0,0,0]
+    diff_arr[N-1,N-1,N-1]=diff_arr[0,0,0]
+    diff_arr[0,N-1,0]=diff_arr[0,0,0]
+    diff_arr[0,N-1,N-1]=diff_arr[0,0,0]
+    diff_arr[0,0,N-1]=diff_arr[0,0,0]
 
     return diff_arr
 
@@ -204,9 +346,11 @@ def B_integ(diff_arr,stack_x,stack_y,stack_z):
     for x_idx in prange(N):
         for y_idx in prange(N):
             for i,j in zip([1,2,0],[2,0,1]):
+
                 var = [np.dot(np.conj(diff_arr[x_idx,y_idx,z_idx,:,i]),diff_arr[x_idx,y_idx,z_idx,:,j])-\
                               np.dot(np.conj(diff_arr[x_idx,y_idx,z_idx,:,j]),diff_arr[x_idx,y_idx,z_idx,:,i]) for
                                 z_idx in range(N)]
+
                 stack_z[i - 1] = np.trapz(var)
             stack_y[y_idx] = stack_z
         stack_x[x_idx] = [np.trapz(stack_y[:,l]) for l in [0,1,2]]
@@ -231,20 +375,177 @@ def B_integ(diff_arr,stack_x,stack_y,stack_z):
 # B_vec = np.zeros(3, dtype=complex)
 
 
-@njit(parallel=True)
+# @njit(parallel=True)
 def B_stack(diff_arr, stack, stack_mag,B_vec):
-    for x_idx in prange(N):
-        for y_idx in prange(N):
-            for z_idx in prange(N):
+    for x_idx in prange(0,N,1):
+        for y_idx in prange(0,N,1):
+            for z_idx in prange(0,N,1):
                 for i,j in zip([1,2,0],[2,0,1]):
-                    var = np.dot(np.conj(diff_arr[x_idx,y_idx,z_idx,:,i]),diff_arr[x_idx,y_idx,z_idx,:,j])-\
-                                  np.dot(np.conj(diff_arr[x_idx,y_idx,z_idx,:,j]),diff_arr[x_idx,y_idx,z_idx,:,i])
+                    var = np.real(1j*(np.dot(np.conj(diff_arr[x_idx,y_idx,z_idx,:,i]),diff_arr[x_idx,y_idx,z_idx,:,j])-\
+                                  np.dot(np.conj(diff_arr[x_idx,y_idx,z_idx,:,j]),diff_arr[x_idx,y_idx,z_idx,:,i])))
                     stack[x_idx,y_idx,z_idx,i-1] = var
+                    if np.isnan(np.real(var)):
+                        print(diff_arr[x_idx,y_idx,z_idx])
+
                     B_vec[i-1] = var
                 stack_mag[x_idx,y_idx,z_idx] = np.sqrt(np.dot(np.conj(B_vec), B_vec))
+
+    ##Following are loops to replace nonsense values at unused points on the edges of the supercells##
+    ##with interpolated values##
+
+    #Loops over the unused points on the edges parallel to x axis#
+    for x_idx in range(1,N-1,2):
+        for y_idx in range(0,N,2):
+            for z_idx in range(0,N,2):
+
+                #current periodic boundary interpolating
+                #no need to worry about hitting the boundary along in x-direction
+                bdyf = 0
+                bdyb = 0
+                bdzb = 0
+                bdzt = 0
+                if y_idx == 0: bdyf = 1
+                if z_idx == 0: bdzb = 1
+                if y_idx == N-1: bdyb = -(N-1)
+                if z_idx == N-1: bdzt = -(N-1)
+
+                for j in range(3):
+                    stack[x_idx,y_idx,z_idx,j] = np.mean([stack[x_idx+1,y_idx,z_idx,j]
+                                                             ,stack[x_idx-1,y_idx,z_idx,j]
+                                                             ,stack[x_idx,y_idx+(1+bdyb),z_idx,j]
+                                                             ,stack[x_idx,y_idx-(1+bdyf),z_idx,j]
+                                                             ,stack[x_idx,y_idx,z_idx+(1+bdzt),j]
+                                                             ,stack[x_idx,y_idx,z_idx-(1+bdzb),j]])
+
+    # Loops over the unused points on the edges parallel to y axis
+    for x_idx in range(0,N,2):
+        for y_idx in range(1,N-1,2):
+            for z_idx in range(0,N,2):
+
+                #current periodic boundary interpolating
+                #no need to worry about hitting the boundary along in y-direction
+                bdxl = 0
+                bdxr = 0
+                bdzb = 0
+                bdzt = 0
+                if x_idx == 0: bdxl = 1
+                if z_idx == 0: bdzb = 1
+                if x_idx == N-1: bdxr = -(N-1)
+                if z_idx == N-1: bdzt = -(N-1)
+                for j in range(3):
+                    stack[x_idx,y_idx,z_idx,j] = np.mean([stack[x_idx+(1+bdxr),y_idx,z_idx,j]
+                                                             ,stack[x_idx-(1+bdxl),y_idx,z_idx,j]
+                                                             ,stack[x_idx,y_idx+1,z_idx,j]
+                                                             ,stack[x_idx,y_idx-1,z_idx,j]
+                                                             ,stack[x_idx,y_idx,z_idx+(1+bdzt),j]
+                                                             ,stack[x_idx,y_idx,z_idx-(1+bdzb),j]])
+
+    # Loops over the unused points on the edges parallel to z axis
+    for x_idx in range(0,N,2):
+        for y_idx in range(0,N,2):
+            for z_idx in range(1,N-1,2):
+
+                #current periodic boundary interpolating
+                #no need to worry about hitting the boundary along in z-direction
+                bdxl = 0
+                bdxr = 0
+                bdyf = 0
+                bdyb = 0
+                if x_idx == 0: bdxl = 1
+                if y_idx == 0: bdyf = 1
+                if x_idx == N-1: bdxr = -(N-1)
+                if y_idx == N-1: bdyb = -(N-1)
+                for j in range(3):
+                    stack[x_idx,y_idx,z_idx,j] = np.mean([stack[x_idx+(1+bdxr),y_idx,z_idx,j]
+                                                             ,stack[x_idx-(1+bdxl),y_idx,z_idx,j]
+                                                             ,stack[x_idx,y_idx+(1+bdyb),z_idx,j]
+                                                             ,stack[x_idx,y_idx-(1+bdyf),z_idx,j]
+                                                             ,stack[x_idx,y_idx,z_idx+1,j]
+                                                             ,stack[x_idx,y_idx,z_idx-1,j]])
     return stack, stack_mag
 
+def A_stack(diff_arr, phi_arr, stack,interp):
+    #Vector potential
+    for x_idx in prange(0,N,1):
+        for y_idx in prange(0,N,1):
+            for z_idx in prange(0,N,1):
+                stack[x_idx,y_idx,z_idx,0] = 1j*(np.dot(np.conj(phi_arr[x_idx,y_idx,z_idx,:]),diff_arr[x_idx,y_idx,z_idx,:,0]))
+                stack[x_idx,y_idx,z_idx,1] = 1j*(np.dot(np.conj(phi_arr[x_idx,y_idx,z_idx,:]),diff_arr[x_idx,y_idx,z_idx,:,2]))
+                stack[x_idx,y_idx,z_idx,2] = 1j*(np.dot(np.conj(phi_arr[x_idx,y_idx,z_idx,:]),diff_arr[x_idx,y_idx,z_idx,:,1]))
 
+    ##Following are loops to replace nonsense values at unused points on the edges of the supercells##
+    ##with interpolated values##
+    if interp==True:
+        #Loops over the unused points on the edges parallel to x axis#
+        for x_idx in range(1,N-1,2):
+            for y_idx in range(0,N,2):
+                for z_idx in range(0,N,2):
+
+                    #current periodic boundary interpolating
+                    #no need to worry about hitting the boundary along in x-direction
+                    bdyf = 0
+                    bdyb = 0
+                    bdzb = 0
+                    bdzt = 0
+                    if y_idx == 0: bdyf = 1
+                    if z_idx == 0: bdzb = 1
+                    if y_idx == N-1: bdyb = -(N-1)
+                    if z_idx == N-1: bdzt = -(N-1)
+
+                    for j in range(3):
+                        stack[x_idx,y_idx,z_idx,j] = np.mean([stack[x_idx+1,y_idx,z_idx,j]
+                                                                ,stack[x_idx-1,y_idx,z_idx,j]
+                                                                ,stack[x_idx,y_idx+(1+bdyb),z_idx,j]
+                                                                ,stack[x_idx,y_idx-(1+bdyf),z_idx,j]
+                                                                ,stack[x_idx,y_idx,z_idx+(1+bdzt),j]
+                                                                ,stack[x_idx,y_idx,z_idx-(1+bdzb),j]])
+
+        # Loops over the unused points on the edges parallel to y axis
+        for x_idx in range(0,N,2):
+            for y_idx in range(1,N-1,2):
+                for z_idx in range(0,N,2):
+
+                    #current periodic boundary interpolating
+                    #no need to worry about hitting the boundary along in y-direction
+                    bdxl = 0
+                    bdxr = 0
+                    bdzb = 0
+                    bdzt = 0
+                    if x_idx == 0: bdxl = 1
+                    if z_idx == 0: bdzb = 1
+                    if x_idx == N-1: bdxr = -(N-1)
+                    if z_idx == N-1: bdzt = -(N-1)
+                    for j in range(3):
+                        stack[x_idx,y_idx,z_idx,j] = np.mean([stack[x_idx+(1+bdxr),y_idx,z_idx,j]
+                                                                ,stack[x_idx-(1+bdxl),y_idx,z_idx,j]
+                                                                ,stack[x_idx,y_idx+1,z_idx,j]
+                                                                ,stack[x_idx,y_idx-1,z_idx,j]
+                                                                ,stack[x_idx,y_idx,z_idx+(1+bdzt),j]
+                                                                ,stack[x_idx,y_idx,z_idx-(1+bdzb),j]])
+
+        # Loops over the unused points on the edges parallel to z axis
+        for x_idx in range(0,N,2):
+            for y_idx in range(0,N,2):
+                for z_idx in range(1,N-1,2):
+
+                    #current periodic boundary interpolating
+                    #no need to worry about hitting the boundary along in z-direction
+                    bdxl = 0
+                    bdxr = 0
+                    bdyf = 0
+                    bdyb = 0
+                    if x_idx == 0: bdxl = 1
+                    if y_idx == 0: bdyf = 1
+                    if x_idx == N-1: bdxr = -(N-1)
+                    if y_idx == N-1: bdyb = -(N-1)
+                    for j in range(3):
+                        stack[x_idx,y_idx,z_idx,j] = np.mean([stack[x_idx+(1+bdxr),y_idx,z_idx,j]
+                                                                ,stack[x_idx-(1+bdxl),y_idx,z_idx,j]
+                                                                ,stack[x_idx,y_idx+(1+bdyb),z_idx,j]
+                                                                ,stack[x_idx,y_idx-(1+bdyf),z_idx,j]
+                                                                ,stack[x_idx,y_idx,z_idx+1,j]
+                                                                ,stack[x_idx,y_idx,z_idx-1,j]])
+    return np.real(stack)
 
 # for i in range(N_runs):
 #     diff_arr_i = read("diff_arr_%s"%i,Master_path)
@@ -254,7 +555,257 @@ def B_stack(diff_arr, stack, stack_mag,B_vec):
 #     #print('shape B array',np.shape(B_arr_i))
 #     #print('shape B mag array',np.shape(B_mag_arr_i))
 
+def curl_A(A_arr,curl_A,interp):
+    if interp==True:
+        for i in range(N-1):
+            for j in range(N-1):
+                for k in range(N-1):
+                    i_f=1;j_f=1;k_f=1
+                    if i==0: 
+                        i_b=2 
+                    else: 
+                        i_b = 1
+                    if j==0: 
+                        j_b=2 
+                    else: 
+                        j_b = 1
+                    if k==0: 
+                        k_b=2 
+                    else: 
+                        k_b = 1
 
+                    dAy_dx = (0.5/a)*(A_arr[i-i_b,j,k,1]-A_arr[i+i_f,j,k,1])
+                    dAz_dx = (0.5/a)*(A_arr[i-i_b,j,k,2]-A_arr[i+i_f,j,k,2])
+                    dAx_dy = (0.5/a)*(A_arr[i,j-j_b,k,0]-A_arr[i,j+j_f,k,0])
+                    dAz_dy = (0.5/a)*(A_arr[i,j-j_b,k,2]-A_arr[i,j+j_f,k,2])
+                    dAx_dz = (0.5/a)*(A_arr[i,j,k-k_b,0]-A_arr[i,j,k+k_f,0])
+                    dAy_dz = (0.5/a)*(A_arr[i,j,k-k_b,1]-A_arr[i,j,k+k_f,1])
+                    
+                    curl_A[i,j,k,0] = dAz_dy - dAy_dz
+                    curl_A[i,j,k,1] = dAx_dz - dAz_dx
+                    curl_A[i,j,k,2] = dAy_dx - dAx_dy
+
+        for x_idx in range(N):
+            for y_idx in range(N):
+                for z_idx in range(N):
+                    if x_idx == N-1:
+                        curl_A[x_idx,y_idx,z_idx] = curl_A[0,y_idx,z_idx]
+                    if y_idx == N-1:
+                        curl_A[x_idx,y_idx,z_idx] = curl_A[x_idx,0,z_idx]
+                    if z_idx == N-1:
+                        curl_A[x_idx,y_idx,z_idx] = curl_A[x_idx,y_idx,0]
+
+        for x_idx in [0,N-1]:
+            for y_idx in [0,N-1]:
+                for z_idx in [0,N-1]:
+                    curl_A[x_idx,y_idx,z_idx] = curl_A[0,0,0]
+    if interp==False:
+        for x_idx in range(0,N-1,2):
+            for y_idx in range(0,N-1,2):
+                for z_idx in range(0,N-1,2):
+                    # print(x_idx,y_idx,z_idx)
+                    bdx = 0
+                    bdy = 0
+                    bdz = 0
+                    if x_idx == 0: bdx = 1
+                    if y_idx == 0: bdy = 1
+                    if z_idx == 0: bdz = 1
+
+                    dAy_dx = (1 / 2 * (2*a)) * (A_arr[x_idx+2, y_idx, z_idx, 1] - A_arr[x_idx-(2+bdx), y_idx, z_idx, 1])
+                    dAz_dx = (1 / 2 * (2*a)) * (A_arr[x_idx+2, y_idx, z_idx, 2] - A_arr[x_idx-(2+bdx), y_idx, z_idx, 2])
+
+                    dAx_dy = (1 / 2 * (2*a)) * (A_arr[x_idx, y_idx+2, z_idx, 0] - A_arr[x_idx, y_idx-(2+bdy), z_idx, 0])
+                    dAz_dy = (1 / 2 * (2*a)) * (A_arr[x_idx, y_idx+2, z_idx, 2] - A_arr[x_idx, y_idx-(2+bdy), z_idx, 2])
+
+                    dAx_dz = (1/2*(2*a))*(A_arr[x_idx, y_idx, z_idx + 2, 0] - A_arr[x_idx, y_idx, z_idx - (2+bdz), 0])
+                    dAy_dz = (1/2*(2*a))*(A_arr[x_idx, y_idx, z_idx + 2, 1] - A_arr[x_idx, y_idx, z_idx - (2+bdz), 1])
+
+                    curl_A[x_idx,y_idx,z_idx,0] = dAz_dy - dAy_dz
+                    curl_A[x_idx,y_idx,z_idx,1] = dAx_dz - dAz_dx
+                    curl_A[x_idx,y_idx,z_idx,2] = dAy_dx - dAx_dy
+                    
+        ##Scans over the supercell face centered points starting from the bottom surface but omitting the top
+        ##Does not loop over the face points on the Left or Front surfaces or the supercell centers
+        for x_idx in range(1,N-1,2):
+            for y_idx in range(1,N-1,2):
+                for z_idx in range(0,N-1,2):
+                    # print(x_idx,y_idx,z_idx)
+                    bdx = 0;bdfx = 0
+                    bdy = 0;bdfy = 0
+                    bdz = 0;bdfz = 0
+                    if x_idx == 1: bdx = 1
+                    if y_idx == 1: bdy = 1
+                    if z_idx == 0: bdz = 1
+                    if x_idx == N-2: bdfx = -(1+x_idx)
+                    if y_idx == N-2: bdfy = -(1+y_idx)
+
+                    dAy_dx = (1 / 2 * (2*a)) * (A_arr[x_idx+2+bdfx, y_idx, z_idx, 1] - A_arr[x_idx-(2+bdx), y_idx, z_idx, 1])
+                    dAz_dx = (1 / 2 * a) * (A_arr[x_idx+2+bdfx, y_idx, z_idx, 2] - A_arr[x_idx-(2+bdx), y_idx, z_idx, 2])
+
+                    dAx_dy = (1 / 2 * (2*a)) * (A_arr[x_idx, y_idx+2+bdfy, z_idx, 0] - A_arr[x_idx, y_idx-(2+bdy), z_idx, 0])
+                    dAz_dy = (1 / 2 * (2*a)) * (A_arr[x_idx, y_idx+2+bdfy, z_idx, 2] - A_arr[x_idx, y_idx-(2+bdy), z_idx, 2])
+
+                    dAx_dz = (1/2*a)*(A_arr[x_idx, y_idx, z_idx + 1, 0] - A_arr[x_idx, y_idx, z_idx - (1+bdz), 0])
+                    dAy_dz = (1/2*a)*(A_arr[x_idx, y_idx, z_idx + 1, 1] - A_arr[x_idx, y_idx, z_idx - (1+bdz), 1])
+
+                    curl_A[x_idx,y_idx,z_idx,0] = dAz_dy - dAy_dz
+                    curl_A[x_idx,y_idx,z_idx,1] = dAx_dz - dAz_dx
+                    curl_A[x_idx,y_idx,z_idx,2] = dAy_dx - dAx_dy
+        #Loop for the face centered points on the left surface
+        for x_idx in [0]:
+            for y_idx in range(1,N-1,2):
+                for z_idx in range(1,N-1,2):
+                    # print(x_idx,y_idx,z_idx)
+                    bdx = 0;bdfx = 0
+                    bdy = 0;bdfy = 0
+                    bdz = 0;bdfz = 0
+                    if x_idx == 0: bdx = 1
+                    if y_idx == 1: bdy = 1
+                    if z_idx == 1: bdz = 1
+                    if y_idx == N-2: bdfy = -(1+y_idx)
+                    if z_idx == N-2: bdfz = -(1+z_idx)
+
+                    dAy_dx = (1 / 2 * a) * (A_arr[x_idx+1, y_idx, z_idx, 1] - A_arr[x_idx-(1+bdx), y_idx, z_idx, 1])
+                    dAz_dx = (1 / 2 * a) * (A_arr[x_idx+1, y_idx, z_idx, 2] - A_arr[x_idx-(1+bdx), y_idx, z_idx, 2])
+
+                    dAx_dy = (1 / 2 * (2*a)) * (A_arr[x_idx, y_idx+2+bdfy, z_idx, 0] - A_arr[x_idx, y_idx-(2+bdy), z_idx, 0])
+                    dAz_dy = (1 / 2 * (2*a)) * (A_arr[x_idx, y_idx+2+bdfy, z_idx, 2] - A_arr[x_idx, y_idx-(2+bdy), z_idx, 2])
+
+                    dAx_dz = (1/2*(2*a))*(A_arr[x_idx, y_idx, z_idx + 2+bdfz, 0] - A_arr[x_idx, y_idx, z_idx - (2+bdz), 0])
+                    dAy_dz = (1/2*(2*a))*(A_arr[x_idx, y_idx, z_idx + 2+bdfz, 1] - A_arr[x_idx, y_idx, z_idx - (2+bdz), 1])
+
+                    curl_A[x_idx,y_idx,z_idx,0] = dAz_dy - dAy_dz
+                    curl_A[x_idx,y_idx,z_idx,1] = dAx_dz - dAz_dx
+                    curl_A[x_idx,y_idx,z_idx,2] = dAy_dx - dAx_dy
+        # Loop for the face centered points on the Front surface
+        for x_idx in range(1,N-1,2):
+            for y_idx in [0]:
+                for z_idx in range(1,N-1,2):
+                    # print(x_idx,y_idx,z_idx)
+                    bdx = 0;bdfx = 0
+                    bdy = 0;bdfy = 0
+                    bdz = 0;bdfz = 0
+                    if x_idx == 0: bdx = 1
+                    if y_idx == 1: bdy = 1
+                    if z_idx == 1: bdz = 1
+                    if x_idx == N-2: bdfx = -(1+x_idx)
+                    if z_idx == N-2: bdfz = -(1+z_idx)
+                    dAy_dx = (1 / 2 * (2*a)) * (A_arr[x_idx+2+bdfx, y_idx, z_idx, 1] - A_arr[x_idx-(2+bdx), y_idx, z_idx, 1])
+                    dAz_dx = (1 / 2 * (2*a)) * (A_arr[x_idx+2+bdfx, y_idx, z_idx, 2] - A_arr[x_idx-(2+bdx), y_idx, z_idx, 2])
+
+                    dAx_dy = (1 / 2 * a) * (A_arr[x_idx, y_idx+1, z_idx, 0] - A_arr[x_idx, y_idx-(1+bdy), z_idx, 0])
+                    dAz_dy = (1 / 2 * a) * (A_arr[x_idx, y_idx+1, z_idx, 2] - A_arr[x_idx, y_idx-(1+bdy), z_idx, 2])
+
+                    dAx_dz = (1/2*(2*a))*(A_arr[x_idx, y_idx, z_idx + 2+bdfz, 0] - A_arr[x_idx, y_idx, z_idx - (2+bdz), 0])
+                    dAy_dz = (1/2*(2*a))*(A_arr[x_idx, y_idx, z_idx + 2+bdfz, 1] - A_arr[x_idx, y_idx, z_idx - (2+bdz), 1])
+
+                    curl_A[x_idx,y_idx,z_idx,0] = dAz_dy - dAy_dz
+                    curl_A[x_idx,y_idx,z_idx,1] = dAx_dz - dAz_dx
+                    curl_A[x_idx,y_idx,z_idx,2] = dAy_dx - dAx_dy
+        #Loops over the supercell centers
+        for x_idx in range(1,N-1,2):
+            for y_idx in range(1,N-1,2):
+                for z_idx in range(1,N-1,2):
+                    # print(x_idx,y_idx,z_idx)
+                    dAy_dx = (1 / 2 * a) * (A_arr[x_idx+1, y_idx, z_idx, 1] - A_arr[x_idx-1, y_idx, z_idx, 1])
+                    dAz_dx = (1 / 2 * a) * (A_arr[x_idx+1, y_idx, z_idx, 2] - A_arr[x_idx-1, y_idx, z_idx, 2])
+
+                    dAx_dy = (1 / 2 * a) * (A_arr[x_idx, y_idx+1, z_idx, 0] - A_arr[x_idx, y_idx-1, z_idx, 0])
+                    dAz_dy = (1 / 2 * a) * (A_arr[x_idx, y_idx+1, z_idx, 2] - A_arr[x_idx, y_idx-1, z_idx, 2])
+
+                    dAx_dz = (1/2*a)*(A_arr[x_idx, y_idx, z_idx + 1, 0] - A_arr[x_idx, y_idx, z_idx - 1, 0])
+                    dAy_dz = (1/2*a)*(A_arr[x_idx, y_idx, z_idx + 1, 1] - A_arr[x_idx, y_idx, z_idx - 1, 1])
+
+                    curl_A[x_idx,y_idx,z_idx,0] = dAz_dy - dAy_dz
+                    curl_A[x_idx,y_idx,z_idx,1] = dAx_dz - dAz_dx
+                    curl_A[x_idx,y_idx,z_idx,2] = dAy_dx - dAx_dy
+        #Setting last element derivative to that of the first one
+        
+        for x_idx in range(N):
+            for y_idx in range(N):
+                for z_idx in range(N):
+                    if x_idx == N-1:
+                        curl_A[x_idx,y_idx,z_idx,:] = curl_A[0,y_idx,z_idx,:]
+                    if y_idx == N-1:
+                        curl_A[x_idx,y_idx,z_idx,:] = curl_A[x_idx,0,z_idx,:]
+                    if z_idx == N-1:
+                        curl_A[x_idx,y_idx,z_idx,:] = curl_A[x_idx,y_idx,0,:]
+
+        #Could be elegant with nested for loops but meh
+        curl_A[N-1,0,0]=curl_A[0,0,0]
+        curl_A[N-1,N-1,0]=curl_A[0,0,0]
+        curl_A[N-1,0,N-1]=curl_A[0,0,0]
+        curl_A[N-1,N-1,N-1]=curl_A[0,0,0]
+        curl_A[0,N-1,0]=curl_A[0,0,0]
+        curl_A[0,N-1,N-1]=curl_A[0,0,0]
+        curl_A[0,0,N-1]=curl_A[0,0,0]
+
+    return curl_A    
+
+def mag_charges_interp(B_arr,flux):
+    for i in range(N-1):
+        for j in range(N-1):
+            for k in range(N-1):
+                B_l = 0.25*(B_arr[i,j,k,0]+B_arr[i,j+1,k,0]+B_arr[i,j+1,k+1,0]+B_arr[i,j,k+1,0])
+                B_r = 0.25*(B_arr[i+1,j,k,0]+B_arr[i+1,j+1,k,0]+B_arr[i+1,j+1,k+1,0]+B_arr[i+1,j,k+1,0])
+                B_b = 0.25*(B_arr[i,j,k,1]+B_arr[i+1,j,k,1]+B_arr[i+1,j,k+1,1]+B_arr[i,j,k+1,1])
+                B_f = 0.25*(B_arr[i,j+1,k,1]+B_arr[i+1,j+1,k,1]+B_arr[i+1,j+1,k+1,1]+B_arr[i,j+1,k+1,1])
+                B_d = 0.25*(B_arr[i,j,k,2]+B_arr[i+1,j,k,2]+B_arr[i+1,j+1,k,2]+B_arr[i,j+1,k,2])
+                B_u = 0.25*(B_arr[i,j,k+1,2]+B_arr[i+1,j,k+1,2]+B_arr[i+1,j+1,k+1,2]+B_arr[i,j+1,k+1,2])
+                flux[i,j,k] = B_r-B_l+B_f-B_b+B_u-B_d
+    return flux
+
+def mag_charges(B_arr,flux):
+    for i in range(1,N-1,2):
+        for j in range(1,N-1,2):
+            for k in range(1,N-1,2):
+                B_l = B_arr[i-1,j,k,0]
+                B_r = B_arr[i+1,j,k,0]
+                B_b = B_arr[i,j-1,k,1]
+                B_f = B_arr[i,j+1,k,1]
+                B_d = B_arr[i,j,k-1,2]
+                B_u = B_arr[i,j,k+1,2]
+                flux[i,j,k] = B_r-B_l+B_f-B_b+B_u-B_d
+    return flux
+
+def B_fluxes(B_arr,div_B):
+    for i in range(N-1):
+        for j in range(N-1):
+            for k in range(N-1):
+                i_f=1;j_f=1;k_f=1
+                if i==0: 
+                    i_b=2 
+                else: 
+                    i_b = 1
+                if j==0: 
+                    j_b=2 
+                else: 
+                    j_b = 1
+                if k==0: 
+                    k_b=2 
+                else: 
+                    k_b = 1
+
+                dB_x = (0.5/a)*(B_arr[i-i_b,j,k,0]-B_arr[i+i_f,j,k,0])
+                dB_y = (0.5/a)*(B_arr[i,j-j_b,k,1]-B_arr[i,j+j_f,k,1])
+                dB_z = (0.5/a)*(B_arr[i,j,k-k_b,2]-B_arr[i,j,k+k_f,2])
+                div_B[i,j,k] = dB_x+dB_y+dB_z
+    for x_idx in range(N):
+        for y_idx in range(N):
+            for z_idx in range(N):
+                if x_idx == N-1:
+                    div_B[x_idx,y_idx,z_idx] = div_B[0,y_idx,z_idx]
+                if y_idx == N-1:
+                    div_B[x_idx,y_idx,z_idx] = div_B[x_idx,0,z_idx]
+                if z_idx == N-1:
+                    div_B[x_idx,y_idx,z_idx] = div_B[x_idx,y_idx,0]
+
+    for x_idx in [0,N-1]:
+        for y_idx in [0,N-1]:
+            for z_idx in [0,N-1]:
+                div_B[x_idx,y_idx,z_idx] = div_B[0,0,0]
+
+    return div_B
 
 #@njit(parallel=True)
 def B_spec(B_arr,B_mag_arr):
@@ -411,10 +962,11 @@ def spec_convolve(B_x_fft,B_y_fft,B_z_fft, stack,B_k,K_c,stack_spec,sorted_list,
     #print(sorted_list)
     sorted_list = sorted_list[np.argsort(sorted_list[:,0])]
     idx_sets = [np.argwhere(i==sorted_list[:,0]) for i in np.unique(sorted_list[:,0])]
-    print('indexing done')
+    #print('indexing done')
     #print(idx_sets[1]);print(sorted_list[:,0][:8]);exit()
     #for k_idx in prange(len(list(set(sorted_list[:,0]))),bin_chunk):
     #for k_idx in prange(len(list(set(sorted_list[:, 0])))):
+    #print(np.shape(idx_sets));exit()
     for k_idx,idx_set in enumerate(idx_sets):
 
         #k = list(set(sorted_list[:,0]))[k_idx:k_idx+bin_chunk]
@@ -453,6 +1005,7 @@ def Higgs_direction(phi_arr, n,sigma):
                     ## Checked and works
 
                     n[x_idx,y_idx,z_idx,i] = -1*np.matmul(phi_dag, np.matmul(sigma[i], phi)) / mag
+
                     # if np.isnan(n[x_idx,y_idx,z_idx,i])==True:
                     #     print(n[x_idx,y_idx,z_idx,i])
                     #     print(phi);print(phi_dag);print(mag);exit()

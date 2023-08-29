@@ -1,0 +1,8 @@
+Mar 6 23
+Succeded in working out moving the moonpole along the string
+added in on-the-fly computing of tet charges and phases on plaquettes to track movement of monopoles and strings.
+added in break and continue statements so transformation ends when there is no string when one is expected
+
+need to do:
+add in the phase shift so string goes away after moving the monopole
+need to  figure out moving the monopole in the tet with the antimonopole

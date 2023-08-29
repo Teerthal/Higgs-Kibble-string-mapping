@@ -76,32 +76,32 @@ def run_multiple_all(i):
     write("B_z_fft_%s" % i, Master_path, B_z_fft)
 
     #fourier_trnsfm_plot(B_mag_fft)
-    #
-    # print('');
-    # print('');
-    # print('')
-    # print('Computing Energy Spectrum')
-    # print('----------------------------------------------------------')
-    # start = time.time()
-    # ###Defined as in 1902.02751, eq 24-33
+
+    print('');
+    print('');
+    print('')
+    print('Computing Energy Spectrum')
+    print('----------------------------------------------------------')
+    start = time.time()
+    ###Defined as in 1902.02751, eq 24-33
     # K = np.arange(0, N)
     # k = np.zeros((N), dtype=float)
     # k[:int(N / 2)] = K[:int(N / 2)]
     # k[int(N / 2):] = K[:int(N / 2)] - N
-    #
-    # dummy = np.zeros((3),dtype=complex)
-    # spec_dum = np.zeros((int(N**3)),dtype=complex)
-    # K_dum = np.zeros((int(N**3)),dtype=complex)
-    # N_bins = K_c_bin_num(N)
-    # E_M_dum = np.zeros((N_bins),dtype=complex)
-    # sorted_dum = np.zeros((N**3,2),dtype=complex)
-    # bin_size = 1
-    #
-    # E_M = spec_convolve(B_x_fft,B_y_fft,B_z_fft,spec_dum,dummy,K_dum, E_M_dum,sorted_dum,bin_size)
-    #
-    # print('Shape convolved spec arr', np.shape(E_M))
 
-    #write('stack_spec_%s'%i, Master_path, E_M)
+    dummy = np.zeros((3),dtype=complex)
+    spec_dum = np.zeros((int(N**3)),dtype=complex)
+    K_dum = np.zeros((int(N**3)),dtype=complex)
+    N_bins = K_c_bin_num(N)
+    E_M_dum = np.zeros((N_bins),dtype=complex)
+    sorted_dum = np.zeros((N**3,2),dtype=complex)
+    bin_size = 1
+
+    E_M = spec_convolve(B_x_fft,B_y_fft,B_z_fft,spec_dum,dummy,K_dum, E_M_dum,sorted_dum,bin_size)
+
+    print('Shape convolved spec arr', np.shape(E_M))
+
+    write('stack_spec_%s'%i, Master_path, E_M)
 
     print('Time Elapsed for stacking spectrum', np.abs(time.time() - start))
     print('');

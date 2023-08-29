@@ -1,0 +1,7 @@
+This is a set of scripts to study the magnetic field structure of a randomly generated
+monopole-string distribution as in 'random_gen'.
+The task is to create a zoom in analysis using the topological
+quantities that dictate the location of the monopoles as a guide.
+Will continue to use the zombie scripts since I haven't cleaned the functions 
+to compute topological quantities in julia; specifically 'tetrahedra_2' that takes care of 
+tessalating the cubic lattice into a tetrahedral lattice
